@@ -43,6 +43,9 @@ func main() {
 	http.HandleFunc("/stream/", func(writer http.ResponseWriter, request *http.Request) {
 		s.handle(writer, request)
 	})
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	})
 	log.Printf("Serving on %s\n", c.bind)
 	log.Fatal(http.ListenAndServe(c.bind, nil))
 }
