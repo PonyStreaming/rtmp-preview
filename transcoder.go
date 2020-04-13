@@ -64,9 +64,10 @@ func (t *transcoder) start() error {
 			n, err := pipe.Read(b)
 			if err != nil {
 				log.Printf("ffmpeg pipe read failed: %v", err)
-				return
+				t.running = false
+			} else {
+				t.sendToClients(b[:n])
 			}
-			t.sendToClients(b[:n])
 		}
 		if err := c.Process.Kill(); err != nil {
 			log.Printf("killing ffmpeg failed: %v", err)
