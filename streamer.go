@@ -19,18 +19,18 @@ var upgrader = websocket.Upgrader{
 type streamer struct {
 	transcoders map[string]*transcoder
 	baseURL     string
-	chunkSize   int
+	readTimeout int
 
 	resolution   string
 	videoBitrate string
 	audioBitrate string
 }
 
-func makeStreamer(baseURL string, chunkSize int, resolution, videoBitrate, audioBitrate string) streamer {
+func makeStreamer(baseURL, resolution, videoBitrate, audioBitrate string, readTimeout int) streamer {
 	return streamer{
 		transcoders:  map[string]*transcoder{},
 		baseURL:      baseURL,
-		chunkSize:    chunkSize,
+		readTimeout:  readTimeout,
 		resolution:   resolution,
 		videoBitrate: videoBitrate,
 		audioBitrate: audioBitrate,
@@ -48,9 +48,9 @@ func (s *streamer) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, ok := s.transcoders[streamName]; !ok {
-		s.transcoders[streamName] = newTranscoder(fmt.Sprintf("%s/%s", s.baseURL, streamName), s.resolution, s.videoBitrate, s.audioBitrate)
+		s.transcoders[streamName] = newTranscoder(fmt.Sprintf("%s/%s", s.baseURL, streamName), s.resolution, s.videoBitrate, s.audioBitrate, s.readTimeout)
 	}
-	client := newTransmitClient(conn, s.chunkSize)
+	client := newTransmitClient(conn)
 	if err := s.transcoders[streamName].addClient(client); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		fmt.Printf("Adding client failed: %v", err)

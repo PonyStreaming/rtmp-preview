@@ -9,17 +9,17 @@ import (
 )
 
 type config struct {
-	bind         string
-	chunkSize    int
-	baseURL      string
-	resolution   string
-	videoBitrate string
-	audioBitrate string
+	bind          string
+	baseURL       string
+	resolution    string
+	videoBitrate  string
+	audioBitrate  string
+	streamTimeout int
 }
 
 func parseFlags() (config, error) {
 	c := config{}
-	flag.IntVar(&c.chunkSize, "chunk-size", 131072, "The size of the TS chunks to send from ffmpeg to clients")
+	flag.IntVar(&c.streamTimeout, "stream-timeout", 10, "The timeout when reading from ffmpeg, in seconds")
 	flag.StringVar(&c.resolution, "resolution", "350x197", "The resolution to generate streams at")
 	flag.StringVar(&c.videoBitrate, "video-bitrate", "700k", "The video bitrate to stream at.")
 	flag.StringVar(&c.audioBitrate, "audio-bitrate", "128k", "The video bitrate to stream at.")
@@ -39,7 +39,7 @@ func main() {
 		log.Println(err)
 		os.Exit(2)
 	}
-	s := makeStreamer(c.baseURL, c.chunkSize, c.resolution, c.videoBitrate, c.audioBitrate)
+	s := makeStreamer(c.baseURL, c.resolution, c.videoBitrate, c.audioBitrate, c.streamTimeout)
 	http.HandleFunc("/stream/", func(writer http.ResponseWriter, request *http.Request) {
 		s.handle(writer, request)
 	})

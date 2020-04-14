@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"sync"
+	"time"
 )
 
 type transcoder struct {
@@ -17,14 +19,16 @@ type transcoder struct {
 	resolution   string
 	videoBitrate string
 	audioBitrate string
+	readTimeout  int
 }
 
-func newTranscoder(url, resolution, videoBitrate, audioBitrate string) *transcoder {
+func newTranscoder(url, resolution, videoBitrate, audioBitrate string, readTimeout int) *transcoder {
 	t := new(transcoder)
 	t.url = url
 	t.resolution = resolution
 	t.videoBitrate = videoBitrate
 	t.audioBitrate = audioBitrate
+	t.readTimeout = readTimeout
 	return t
 }
 
@@ -61,20 +65,25 @@ func (t *transcoder) start() error {
 	go func() {
 		b := make([]byte, 131072)
 		for t.running {
+			if err := pipe.(*os.File).SetReadDeadline(time.Now().Add(time.Duration(t.readTimeout) * time.Second)); err != nil {
+				log.Printf("Couldn't set deadline on ffmpeg pipe: %v\n", err)
+			}
 			n, err := pipe.Read(b)
 			if err != nil {
 				log.Printf("ffmpeg pipe read failed: %v", err)
-				t.running = false
+				t.stop()
 			} else {
 				t.sendToClients(b[:n])
 			}
 		}
+		log.Printf("%s reader is finished.\n", t.url)
 		if err := c.Process.Kill(); err != nil {
 			log.Printf("killing ffmpeg failed: %v", err)
 		}
 		if err := c.Wait(); err != nil {
 			log.Printf("ffmpeg failed: %v", err)
 		}
+		log.Printf("%s cleanup complete.\n", t.url)
 	}()
 	return nil
 }
@@ -100,4 +109,7 @@ func (t *transcoder) sendToClients(b []byte) {
 func (t *transcoder) stop() {
 	log.Printf("Stopping transcoder for %s\n", t.url)
 	t.running = false
+	for _, c := range t.clients {
+		c.close()
+	}
 }
