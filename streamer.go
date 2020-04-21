@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-	"path"
+	"strings"
 )
 
 var upgrader = websocket.Upgrader{
@@ -38,10 +38,12 @@ func makeStreamer(baseURL, resolution, videoBitrate, audioBitrate string, readTi
 }
 
 func (s *streamer) handle(w http.ResponseWriter, r *http.Request) {
-	_, streamName := path.Split(r.URL.Path)
-	if streamName == "" {
+	pathParts := strings.SplitN(r.URL.Path, "/", 3)
+
+	if len(pathParts) < 3 || pathParts[2] == "" {
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
+	streamName := pathParts[2]
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Upgrading connection to websocket failed: %v", err)
